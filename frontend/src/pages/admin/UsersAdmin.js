@@ -18,16 +18,34 @@ import {
   TableBody,
   IconButton,
   CircularProgress,
-  Divider,
+  Chip,
+  Avatar,
+  Fade,
+  Zoom,
+  alpha,
+  Card,
+  CardContent,
+  Stack,
+  Tooltip,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  Delete as DeleteIcon,
+  PersonAdd as PersonAddIcon,
+  AdminPanelSettings as AdminIcon,
+  Security as OwnerIcon,
+  Person as UserIcon,
+  Refresh as RefreshIcon,
+  Edit as EditIcon,
+} from "@mui/icons-material";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function UsersAdmin() {
+export default function UsersAdmin({ refreshToken }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [role, setRole] = useState("user");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const token = localStorage.getItem("token");
 
   async function fetchUsers() {
@@ -48,12 +66,13 @@ export default function UsersAdmin() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [refreshToken]);
 
   async function handleCreate() {
     setError("");
-    if (!name) {
-      setError("Name required");
+    setSuccess("");
+    if (!name.trim()) {
+      setError("Name is required");
       return;
     }
     try {
@@ -63,23 +82,25 @@ export default function UsersAdmin() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name, role }),
+        body: JSON.stringify({ name: name.trim(), role }),
       });
       if (!res.ok) {
         const e = await res.json();
         setError(e.message || "Create failed");
         return;
       }
+      setSuccess(`User "${name}" created successfully!`);
       setName("");
       setRole("user");
       fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     } catch {
       setError("Server error");
     }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Delete user and their bookings?")) return;
+  async function handleDelete(id, userName) {
+    if (!window.confirm(`Delete user "${userName}"?`)) return;
     try {
       const res = await fetch(`http://localhost:5000/api/users/${id}`, {
         method: "DELETE",
@@ -90,13 +111,15 @@ export default function UsersAdmin() {
         setError(e.message || "Delete failed");
         return;
       }
+      setSuccess(`User "${userName}" deleted successfully!`);
       fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     } catch {
       setError("Server error");
     }
   }
 
-  async function changeRole(id, newRole) {
+  async function changeRole(id, newRole, userName) {
     try {
       const res = await fetch(`http://localhost:5000/api/users/${id}`, {
         method: "PATCH",
@@ -111,115 +134,401 @@ export default function UsersAdmin() {
         setError(e.message || "Update failed");
         return;
       }
+      setSuccess(`User "${userName}" role updated to ${newRole}`);
       fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
     } catch {
       setError("Server error");
     }
   }
 
+  const getRoleConfig = (roleValue) => {
+    switch (roleValue) {
+      case "admin":
+        return { label: "Admin", color: "#667eea", icon: <AdminIcon sx={{ fontSize: 16 }} /> };
+      case "owner":
+        return { label: "Owner", color: "#f59e0b", icon: <OwnerIcon sx={{ fontSize: 16 }} /> };
+      default:
+        return { label: "User", color: "#10b981", icon: <UserIcon sx={{ fontSize: 16 }} /> };
+    }
+  };
+
+  const getInitials = (name) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <Container sx={{ mt: 4 }}>
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          User Management
-        </Typography>
-        <Divider sx={{ mb: 3 }} />
-        {error && <Alert severity="error">{error}</Alert>}
-
-        {/* Create User Form */}
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-            mb: 3,
-            alignItems: "center",
-          }}
-        >
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            size="small"
-          />
-          <FormControl sx={{ minWidth: 140 }} size="small">
-            <InputLabel id="role-label">Role</InputLabel>
-            <Select
-              labelId="role-label"
-              value={role}
-              label="Role"
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <MenuItem value="user">User</MenuItem>
-              <MenuItem value="owner">Owner</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-            </Select>
-          </FormControl>
-          <Button
-            variant="contained"
-            onClick={handleCreate}
-            sx={{
-              backgroundColor: "#1976d2",
-              "&:hover": { backgroundColor: "#1565c0" },
-            }}
+    <Container maxWidth="lg" sx={{ py: 2 }}>
+      <Fade in timeout={500}>
+        <Box>
+          {/* Header Section */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            Create
-          </Button>
-        </Box>
+            <Box
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                borderRadius: 4,
+                p: 3,
+                mb: 3,
+                color: "#fff",
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
+                User Management
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                Manage system users, roles, and permissions
+              </Typography>
+            </Box>
+          </motion.div>
 
-        {/* User Table */}
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f0f4f8" }}>
-                <TableCell>No.</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell align="center">Action</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((u, index) => (
-                <TableRow key={u.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{u.name}</TableCell>
-                  <TableCell>
-                    <FormControl size="small" sx={{ minWidth: 120 }}>
-                      <Select
-                        value={u.role}
-                        onChange={(e) => changeRole(u.id, e.target.value)}
-                      >
-                        <MenuItem value="user">User</MenuItem>
-                        <MenuItem value="owner">Owner</MenuItem>
-                        <MenuItem value="admin">Admin</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDelete(u.id)}
-                      size="small"
+          {/* Alerts */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                  {error}
+                </Alert>
+              </motion.div>
+            )}
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+                  {success}
+                </Alert>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Create User Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <Card
+              elevation={0}
+              sx={{
+                mb: 3,
+                borderRadius: 3,
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.05)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 2.5,
+                  }}
+                >
+                  <PersonAddIcon sx={{ color: "#667eea" }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#1a1a2e" }}>
+                    Add New User
+                  </Typography>
+                </Box>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Full Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter user name"
+                    variant="outlined"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        "&:hover fieldset": {
+                          borderColor: "#667eea",
+                        },
+                        "&.Mui-focused fieldset": {
+                          borderColor: "#667eea",
+                        },
+                      },
+                    }}
+                  />
+                  <FormControl sx={{ minWidth: 160 }}>
+                    <InputLabel id="role-select-label">Role</InputLabel>
+                    <Select
+                      labelId="role-select-label"
+                      value={role}
+                      label="Role"
+                      onChange={(e) => setRole(e.target.value)}
+                      sx={{
+                        borderRadius: 2,
+                        "&:hover .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#667eea",
+                        },
+                      }}
                     >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        <Typography
-          variant="body2"
-          sx={{ mt: 2, textAlign: "right", color: "gray" }}
-        >
-          Total: {users.length} user(s)
-        </Typography>
-      </Paper>
+                      <MenuItem value="user">
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <UserIcon sx={{ fontSize: 18, color: "#10b981" }} />
+                          User
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="owner">
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <OwnerIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
+                          Owner
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="admin">
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <AdminIcon sx={{ fontSize: 18, color: "#667eea" }} />
+                          Admin
+                        </Box>
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    onClick={handleCreate}
+                    sx={{
+                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      borderRadius: 2,
+                      px: 4,
+                      py: 1,
+                      textTransform: "none",
+                      fontWeight: 600,
+                      "&:hover": {
+                        transform: "translateY(-1px)",
+                        boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
+                      },
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    Create User
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Users Table Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.05)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                overflow: "hidden",
+              }}
+            >
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderBottom: "1px solid #f0f0f0",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#1a1a2e" }}>
+                    System Users
+                  </Typography>
+                  <Chip
+                    label={`${users.length} total`}
+                    size="small"
+                    sx={{
+                      bgcolor: alpha("#667eea", 0.1),
+                      color: "#667eea",
+                      fontWeight: 500,
+                    }}
+                  />
+                </Box>
+                <Tooltip title="Refresh">
+                  <IconButton onClick={fetchUsers} size="small" sx={{ color: "#667eea" }}>
+                    <RefreshIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 6 }}>
+                  <CircularProgress sx={{ color: "#667eea" }} />
+                </Box>
+              ) : users.length === 0 ? (
+                <Box sx={{ textAlign: "center", py: 6 }}>
+                  <Typography variant="body2" sx={{ color: "#999" }}>
+                    No users found. Create your first user above.
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ overflowX: "auto" }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#f8f9fc" }}>
+                        <TableCell sx={{ fontWeight: 600, color: "#666", width: 70 }}>#</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: "#666" }}>User</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: "#666", width: 180 }}>
+                          Role
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: "#666", width: 100, textAlign: "center" }}>
+                          Actions
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <AnimatePresence>
+                        {users.map((u, index) => {
+                          const roleConfig = getRoleConfig(u.role);
+                          return (
+                            <motion.tr
+                              key={u.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              transition={{ duration: 0.2, delay: index * 0.05 }}
+                              style={{ display: "table-row" }}
+                            >
+                              <TableCell sx={{ color: "#888", fontWeight: 500 }}>
+                                {String(index + 1).padStart(2, "0")}
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  <Avatar
+                                    sx={{
+                                      width: 36,
+                                      height: 36,
+                                      bgcolor: alpha(roleConfig.color, 0.15),
+                                      color: roleConfig.color,
+                                      fontWeight: 600,
+                                      fontSize: "0.9rem",
+                                    }}
+                                  >
+                                    {getInitials(u.name)}
+                                  </Avatar>
+                                  <Typography sx={{ fontWeight: 500, color: "#1a1a2e" }}>
+                                    {u.name}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <FormControl size="small" sx={{ minWidth: 130 }}>
+                                  <Select
+                                    value={u.role}
+                                    onChange={(e) => changeRole(u.id, e.target.value, u.name)}
+                                    sx={{
+                                      borderRadius: 2,
+                                      "& .MuiSelect-select": {
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                        py: 0.8,
+                                      },
+                                    }}
+                                    renderValue={(selected) => {
+                                      const config = getRoleConfig(selected);
+                                      return (
+                                        <Chip
+                                          label={config.label}
+                                          size="small"
+                                          icon={config.icon}
+                                          sx={{
+                                            bgcolor: alpha(config.color, 0.12),
+                                            color: config.color,
+                                            fontWeight: 500,
+                                            "& .MuiChip-icon": {
+                                              color: config.color,
+                                            },
+                                          }}
+                                        />
+                                      );
+                                    }}
+                                  >
+                                    <MenuItem value="user">
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <UserIcon sx={{ fontSize: 18, color: "#10b981" }} />
+                                        <span>User</span>
+                                      </Box>
+                                    </MenuItem>
+                                    <MenuItem value="owner">
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <OwnerIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
+                                        <span>Owner</span>
+                                      </Box>
+                                    </MenuItem>
+                                    <MenuItem value="admin">
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <AdminIcon sx={{ fontSize: 18, color: "#667eea" }} />
+                                        <span>Admin</span>
+                                      </Box>
+                                    </MenuItem>
+                                  </Select>
+                                </FormControl>
+                              </TableCell>
+                              <TableCell align="center">
+                                <Tooltip title="Delete user">
+                                  <IconButton
+                                    onClick={() => handleDelete(u.id, u.name)}
+                                    size="small"
+                                    sx={{
+                                      color: "#ef4444",
+                                      "&:hover": {
+                                        bgcolor: alpha("#ef4444", 0.1),
+                                      },
+                                    }}
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </TableCell>
+                            </motion.tr>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+
+              {/* Footer */}
+              {users.length > 0 && (
+                <Box
+                  sx={{
+                    p: 2,
+                    borderTop: "1px solid #f0f0f0",
+                    bgcolor: "#fafbfc",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: "#999" }}>
+                    Total: <strong>{users.length}</strong> user(s) • Last updated: {new Date().toLocaleTimeString()}
+                  </Typography>
+                </Box>
+              )}
+            </Card>
+          </motion.div>
+        </Box>
+      </Fade>
     </Container>
   );
 }

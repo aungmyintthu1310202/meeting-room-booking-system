@@ -12,7 +12,7 @@ const createDefaultAdmin = async () => {
   const count = await User.countDocuments();
   if (count === 0) {
     const hashed = await bcrypt.hash("admin123", 10);
-    await User.create({ name: "admin", password: hashed, role: "admin" });
+    await User.create({ name: "Admin", password: hashed, role: "admin" });
     console.log("Default admin created: admin/admin123");
   }
 };

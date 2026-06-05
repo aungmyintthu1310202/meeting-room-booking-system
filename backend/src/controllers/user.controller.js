@@ -53,7 +53,7 @@ export const deleteUser = async (req, res) => {
     }
 
     const deleteResult = await Booking.deleteMany({ userId: user._id });
-    await user.remove();
+    await User.findByIdAndDelete(id);
 
     res.json({
       message: "User deleted",
