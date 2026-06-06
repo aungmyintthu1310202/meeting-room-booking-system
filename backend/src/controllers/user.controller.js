@@ -2,13 +2,10 @@ import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import Booking from "../models/booking.model.js";
 
-const hashPassword = async (password) => {
-  return bcrypt.hash(password, 10);
-};
-
+// Show all users
 export const listUsers = async (req, res) => {
   try {
-    const users = await User.find({}, { password: 0 }).lean();
+    const users = await User.find({}).lean();
     res.json({ users: users.map((u) => ({ id: u._id.toString(), name: u.name, role: u.role })) });
   } catch (err) {
     console.error("listUsers error:", err);
@@ -16,9 +13,10 @@ export const listUsers = async (req, res) => {
   }
 };
 
+// Create a new user (admin only)
 export const createUser = async (req, res) => {
   try {
-    const { name, role = "user", password } = req.body;
+    const { name, role = "user" } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: "Name is required" });
@@ -29,14 +27,11 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ error: "User already exists" });
     }
 
-    const rawPassword = password || Math.random().toString(36).slice(2);
-    const hashed = await hashPassword(rawPassword);
-    const user = new User({ name, role, password: hashed });
+    const user = new User({ name, role});
     await user.save();
 
     res.status(201).json({
       user: { id: user._id.toString(), name: user.name, role: user.role },
-      password: rawPassword,
     });
   } catch (err) {
     console.error("createUser error:", err);
@@ -44,6 +39,7 @@ export const createUser = async (req, res) => {
   }
 };
 
+// Delete a user and their bookings (admin only)
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -66,6 +62,7 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+// Update a user's role (admin only)
 export const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;

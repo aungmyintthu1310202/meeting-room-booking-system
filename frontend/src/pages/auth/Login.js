@@ -15,6 +15,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Avatar,
+  alpha,
 } from "@mui/material";
 import {
   Email,
@@ -26,7 +28,9 @@ import {
   Person,
   Security,
   Work,
+  MeetingRoom,
 } from "@mui/icons-material";
+import { motion } from "framer-motion";
 import getClientName from "../../common/utils/getClientName";
 
 function Login() {
@@ -34,21 +38,23 @@ function Login() {
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [email, setEmail] = useState("hakeem@digital.com");
-  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const clientName = getClientName();
 
+  // Fetch users
   useEffect(() => {
     async function fetchUsers() {
       try {
         setLoading(true);
         const res = await fetch("http://localhost:5000/api/users");
-        if (!res.ok) return;
+        if (!res.ok) {
+          setError("Failed to load users");
+          return;
+        }
         const data = await res.json();
         setUsers(data.users || []);
       } catch (e) {
-        // ignore
+        setError("Internal server error");
       } finally {
         setLoading(false);
       }
@@ -56,6 +62,7 @@ function Login() {
     fetchUsers();
   }, []);
 
+  // Handle Login
   async function handleLogin() {
     if (!selected) {
       setError("Please select a user to login");
@@ -77,7 +84,7 @@ function Login() {
       localStorage.setItem("userId", data.user.id);
       localStorage.setItem("userName", data.user.name);
       localStorage.setItem("userRole", data.user.role);
-      window.location.href = `/${clientName}/dashboard`;
+      window.location.href = `/${clientName}/createBooking`;
     } catch (e) {
       setError("Server error");
     }
@@ -90,148 +97,250 @@ function Login() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        py: 4,
+        background: "linear-gradient(135deg, #f5f0ff 0%, #e0c3fc 40%, #c8b6ff 70%, #b8b5ff 100%)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            borderRadius: 5,
-            overflow: "hidden",
-            background: "#fff",
-          }}
-        >
-          {/* Hero Section with Gradient */}
+      {/* Animated background bubbles - updated colors */}
+      <Box
+        sx={{
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          overflow: "hidden",
+          zIndex: 0,
+        }}
+      >
+        {[...Array(15)].map((_, i) => (
           <Box
+            key={i}
+            component={motion.div}
+            initial={{
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+              scale: Math.random() * 0.5 + 0.3,
+            }}
+            animate={{
+              y: [null, -50, 50, -30, 30, 0],
+              x: [null, 40, -40, 20, -20, 0],
+            }}
+            transition={{
+              duration: Math.random() * 15 + 10,
+              repeat: Infinity,
+              repeatType: "reverse",
+            }}
             sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              py: 5,
-              px: 4,
-              textAlign: "center",
+              position: "absolute",
+              width: Math.random() * 120 + 40,
+              height: Math.random() * 120 + 40,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${alpha("#ffffff", 0.15)} 0%, ${alpha("#ffffff", 0.08)} 100%)`,
+              filter: "blur(40px)",
+              pointerEvents: "none",
+            }}
+          />
+        ))}
+      </Box>
+
+      <Container maxWidth="sm" sx={{ position: "relative", zIndex: 1 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 6,
+              overflow: "hidden",
+              background: alpha("#ffffff", 0.92),
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              border: "1px solid rgba(255,255,255,0.3)",
             }}
           >
+            {/* Hero Section with Gradient + Logo */}
             <Box
-              component="img"
-              src="/images/logo.png"
-              alt="Chat App Logo"
               sx={{
-                width: { xs: 120, sm: 120, md: 120 },
-                maxWidth: "100%",
-                height: "auto",
-                display: "block",
-                mx: "auto",
-                mb: 2,
-                mt: -3,
-              }}
-            />
-            <Typography
-              variant="h5"
-              sx={{
-                color: "#fff",
-                fontWeight: 700,
-                mt: 1,
-                maxWidth: 400,
-                mx: "auto",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                py: 4,
+                px: 4,
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              Meeting Room Booking System
-            </Typography>
-          </Box>
-
-          {/* Login Form Section */}
-          <Box sx={{ p: 4 }}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                color: "#1a1a2e",
-                mb: 0.5,
-              }}
-            >
-              Welcome back!
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "#666",
-                mb: 3,
-              }}
-            >
-              Please select a user to login
-            </Typography>
-
-            {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-                <CircularProgress sx={{ color: "#667eea" }} />
-              </Box>
-            ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-                {/* User */}
-                <FormControl>
-                  <InputLabel id="user-select-label">User</InputLabel>
-                  <Select
-                    labelId="user-select-label"
-                    value={selected}
-                    label="User"
-                    onChange={(e) => setSelected(e.target.value)}
-                  >
-                    {users.map((u) => (
-                      <MenuItem key={u.id} value={u.id}>
-                        {u.role === "admin" ? (
-                          <Security sx={{ mr: 1 }} />
-                        ) : u.role === "owner" ? (
-                          <Work sx={{ mr: 1 }} />
-                        ) : (
-                          <Person sx={{ mr: 1 }} />
-                        )}
-                        {u.name} ({u.role})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {error && (
-                  <Alert severity="error" sx={{ borderRadius: 2 }}>
-                    {error}
-                  </Alert>
-                )}
-
-                {/* Login Button */}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleLogin}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+              >
+                <Box
+                  component="img"
+                  src="/images/logo.png"
+                  alt="Chat App Logo"
                   sx={{
-                    background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                    py: 1.5,
-                    borderRadius: 3,
-                    fontWeight: 600,
-                    fontSize: "1rem",
-                    textTransform: "none",
-                    boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
-                    transition: "transform 0.2s ease",
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                      boxShadow: "0 12px 25px rgba(102, 126, 234, 0.4)",
-                    },
+                    width: { xs: 120, sm: 120, md: 120 },
+                    maxWidth: "100%",
+                    height: "auto",
+                    display: "block",
+                    mx: "auto",
+                    mb: 2,
+                    mt: -3,
                   }}
-                  endIcon={<ArrowForward />}
+                />
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    letterSpacing: "-0.5px",
+                    textShadow: "0 2px 10px rgba(0,0,0,0.2)",
+                  }}
                 >
-                  Login
-                </Button>
+                  Meeting Room Booking System
+                </Typography>
+              </motion.div>
+            </Box>
 
-                <Box sx={{ textAlign: "center", mt: 1 }}>
-                  <Typography variant="body2" sx={{ color: "#666" }}>
-                    Don't have a user exist, ask an admin to create users?
-                  </Typography>
+            {/* Form Section */}
+            <Box sx={{ p: 4 }}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    color: "#1a1a2e",
+                    mb: 0.5,
+                  }}
+                >
+                  Welcome back
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#666",
+                    mb: 3,
+                  }}
+                >
+                  Please select a user to login
+                </Typography>
+              </motion.div>
+
+              {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+                  <CircularProgress sx={{ color: "#667eea" }} />
                 </Box>
-              </Box>
-            )}
-          </Box>
-        </Paper>
+              ) : (
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}
+                >
+                  {/* User Select */}
+                  <FormControl fullWidth>
+                    <InputLabel id="user-select-label">Select User</InputLabel>
+                    <Select
+                      labelId="user-select-label"
+                      value={selected}
+                      label="Select User"
+                      onChange={(e) => setSelected(e.target.value)}
+                      sx={{
+                        borderRadius: 2,
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: alpha("#667eea", 0.3),
+                        },
+                        "&:hover .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#667eea",
+                        },
+                      }}
+                    >
+                      {users.map((u) => (
+                        <MenuItem key={u.id} value={u.id}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1.5,
+                            }}
+                          >
+                            <Avatar
+                              sx={{
+                                width: 28,
+                                height: 28,
+                                bgcolor:
+                                  u.role === "admin"
+                                    ? "#667eea"
+                                    : u.role === "owner"
+                                      ? "#f59e0b"
+                                      : "#10b981",
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              {u.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            {u.name}{" "}
+                            <Typography
+                              component="span"
+                              sx={{ color: "#888", fontSize: "0.8rem" }}
+                            >
+                              ({u.role})
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                    >
+                      <Alert severity="error" sx={{ borderRadius: 2 }}>
+                        {error}
+                      </Alert>
+                    </motion.div>
+                  )}
+
+                  {/* Login Button */}
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={handleLogin}
+                    sx={{
+                      background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      py: 1.5,
+                      borderRadius: 3,
+                      fontWeight: 600,
+                      fontSize: "1rem",
+                      textTransform: "none",
+                      boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        transform: "translateY(-3px)",
+                        boxShadow: "0 14px 28px rgba(102, 126, 234, 0.4)",
+                      },
+                    }}
+                    endIcon={<ArrowForward />}
+                  >
+                    Login
+                  </Button>
+
+                  <Box sx={{ textAlign: "center", mt: 1 }}>
+                    <Typography variant="body2" sx={{ color: "#666" }}>
+                      Don't have a user? Ask an admin to create users.
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+        </motion.div>
       </Container>
     </Box>
   );

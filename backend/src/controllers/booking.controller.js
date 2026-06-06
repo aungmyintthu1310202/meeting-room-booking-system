@@ -2,6 +2,7 @@ import Booking from "../models/booking.model.js";
 import User from "../models/user.model.js";
 import mongoose from "mongoose";
 
+// Helper function to check for overlapping bookings
 const checkOverlap = async (start, end) => {
   return Booking.findOne({
     $and: [
@@ -11,6 +12,7 @@ const checkOverlap = async (start, end) => {
   });
 };
 
+// All authenticated users can view all bookings; delete remains restricted to own bookings for regular users
 export const listBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -32,6 +34,7 @@ export const listBookings = async (req, res) => {
   }
 };
 
+// Create a new booking, ensuring no overlaps and valid input
 export const createBooking = async (req, res) => {
   try {
     const { startTime, endTime } = req.body;
@@ -75,6 +78,7 @@ export const createBooking = async (req, res) => {
   }
 };
 
+// Admin and owner can delete any booking, users can only delete their own
 export const deleteBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -102,6 +106,7 @@ export const deleteBooking = async (req, res) => {
   }
 };
 
+// Admin and owner can see summary of all bookings, users can only see their own summary
 export const getSummary = async (req, res) => {
   try {
     const role = req.user.role;

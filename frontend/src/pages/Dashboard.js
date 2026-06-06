@@ -72,7 +72,13 @@ export default function Dashboard() {
   };
 
   const menuItems = [
-    { id: "bookings", label: "Bookings", icon: MeetingRoom, path: "dashboard" },
+    { id: "bookings", label: "Bookings", icon: MeetingRoom, path: "createBooking" },
+    {
+      id: "bookingList",
+      label: "Booking List",
+      icon: DashboardIcon,
+      path: "bookingList",
+    },
   ];
 
   if (role === "admin") {
@@ -119,7 +125,7 @@ export default function Dashboard() {
           sx={{
             color: "#fff",
             fontWeight: 600,
-            fontSize: "0.75rem",
+            fontSize: "0.9rem",
             mt: 0.5,
           }}
         >
@@ -290,8 +296,10 @@ export default function Dashboard() {
             </IconButton>
             <Typography variant="h6" noWrap sx={{ fontWeight: 600 }}>
               {selectedView === "bookings"
-                ? "Bookings Dashboard"
-                : "User Management"}
+                ? "Create Booking"
+                : selectedView === "bookingList"
+                  ? "Booking List"
+                  : "User Management"}
             </Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -428,10 +436,9 @@ export default function Dashboard() {
         <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {selectedView === "bookings" ? (
-              <>
-                <BookingForm onCreated={refresh} />
-                <BookingsList refreshToken={tick} />
-              </>
+              <BookingForm onCreated={refresh} />
+            ) : selectedView === "bookingList" ? (
+              <BookingsList refreshToken={tick} />
             ) : (
               <UsersAdmin refreshToken={tick} />
             )}

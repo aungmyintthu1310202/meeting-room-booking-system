@@ -21,7 +21,6 @@ import {
   Chip,
   Avatar,
   Fade,
-  Zoom,
   alpha,
   Card,
   CardContent,
@@ -35,7 +34,8 @@ import {
   Security as OwnerIcon,
   Person as UserIcon,
   Refresh as RefreshIcon,
-  Edit as EditIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -46,6 +46,8 @@ export default function UsersAdmin({ refreshToken }) {
   const [role, setRole] = useState("user");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(5);
   const token = localStorage.getItem("token");
 
   async function fetchUsers() {
@@ -67,6 +69,11 @@ export default function UsersAdmin({ refreshToken }) {
   useEffect(() => {
     fetchUsers();
   }, [refreshToken]);
+
+  // Reset to first page when users list changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [users.length]);
 
   async function handleCreate() {
     setError("");
@@ -160,6 +167,20 @@ export default function UsersAdmin({ refreshToken }) {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  // Pagination logic
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(users.length / usersPerPage);
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
   return (
@@ -347,6 +368,8 @@ export default function UsersAdmin({ refreshToken }) {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 1,
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -381,149 +404,211 @@ export default function UsersAdmin({ refreshToken }) {
                   </Typography>
                 </Box>
               ) : (
-                <Box sx={{ overflowX: "auto" }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "#f8f9fc" }}>
-                        <TableCell sx={{ fontWeight: 600, color: "#666", width: 70 }}>#</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: "#666" }}>User</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: "#666", width: 180 }}>
-                          Role
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: "#666", width: 100, textAlign: "center" }}>
-                          Actions
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <AnimatePresence>
-                        {users.map((u, index) => {
-                          const roleConfig = getRoleConfig(u.role);
-                          return (
-                            <motion.tr
-                              key={u.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, x: -20 }}
-                              transition={{ duration: 0.2, delay: index * 0.05 }}
-                              style={{ display: "table-row" }}
-                            >
-                              <TableCell sx={{ color: "#888", fontWeight: 500 }}>
-                                {String(index + 1).padStart(2, "0")}
-                              </TableCell>
-                              <TableCell>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                  <Avatar
-                                    sx={{
-                                      width: 36,
-                                      height: 36,
-                                      bgcolor: alpha(roleConfig.color, 0.15),
-                                      color: roleConfig.color,
-                                      fontWeight: 600,
-                                      fontSize: "0.9rem",
-                                    }}
-                                  >
-                                    {getInitials(u.name)}
-                                  </Avatar>
-                                  <Typography sx={{ fontWeight: 500, color: "#1a1a2e" }}>
-                                    {u.name}
-                                  </Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell>
-                                <FormControl size="small" sx={{ minWidth: 130 }}>
-                                  <Select
-                                    value={u.role}
-                                    onChange={(e) => changeRole(u.id, e.target.value, u.name)}
-                                    sx={{
-                                      borderRadius: 2,
-                                      "& .MuiSelect-select": {
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                        py: 0.8,
-                                      },
-                                    }}
-                                    renderValue={(selected) => {
-                                      const config = getRoleConfig(selected);
-                                      return (
-                                        <Chip
-                                          label={config.label}
-                                          size="small"
-                                          icon={config.icon}
-                                          sx={{
-                                            bgcolor: alpha(config.color, 0.12),
-                                            color: config.color,
-                                            fontWeight: 500,
-                                            "& .MuiChip-icon": {
+                <>
+                  <Box sx={{ overflowX: "auto" }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: "#f8f9fc" }}>
+                          <TableCell sx={{ fontWeight: 600, color: "#666", width: 70 }}>#</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: "#666" }}>User</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: "#666", width: 180 }}>Role</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: "#666", width: 100, textAlign: "center" }}>
+                            Actions
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <AnimatePresence>
+                          {currentUsers.map((u, idx) => {
+                            const roleConfig = getRoleConfig(u.role);
+                            const globalIndex = indexOfFirstUser + idx + 1;
+                            return (
+                              <motion.tr
+                                key={u.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                style={{ display: "table-row" }}
+                              >
+                                <TableCell sx={{ color: "#888", fontWeight: 500 }}>
+                                  {String(globalIndex).padStart(2, "0")}
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                    <Avatar
+                                      sx={{
+                                        width: 36,
+                                        height: 36,
+                                        bgcolor: alpha(roleConfig.color, 0.15),
+                                        color: roleConfig.color,
+                                        fontWeight: 600,
+                                        fontSize: "0.9rem",
+                                      }}
+                                    >
+                                      {getInitials(u.name)}
+                                    </Avatar>
+                                    <Typography sx={{ fontWeight: 500, color: "#1a1a2e" }}>
+                                      {u.name}
+                                    </Typography>
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <FormControl size="small" sx={{ minWidth: 130 }}>
+                                    <Select
+                                      value={u.role}
+                                      onChange={(e) => changeRole(u.id, e.target.value, u.name)}
+                                      sx={{
+                                        borderRadius: 2,
+                                        "& .MuiSelect-select": {
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 1,
+                                          py: 0.8,
+                                        },
+                                      }}
+                                      renderValue={(selected) => {
+                                        const config = getRoleConfig(selected);
+                                        return (
+                                          <Chip
+                                            label={config.label}
+                                            size="small"
+                                            icon={config.icon}
+                                            sx={{
+                                              bgcolor: alpha(config.color, 0.12),
                                               color: config.color,
-                                            },
-                                          }}
-                                        />
-                                      );
-                                    }}
-                                  >
-                                    <MenuItem value="user">
-                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                        <UserIcon sx={{ fontSize: 18, color: "#10b981" }} />
-                                        <span>User</span>
-                                      </Box>
-                                    </MenuItem>
-                                    <MenuItem value="owner">
-                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                        <OwnerIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
-                                        <span>Owner</span>
-                                      </Box>
-                                    </MenuItem>
-                                    <MenuItem value="admin">
-                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                        <AdminIcon sx={{ fontSize: 18, color: "#667eea" }} />
-                                        <span>Admin</span>
-                                      </Box>
-                                    </MenuItem>
-                                  </Select>
-                                </FormControl>
-                              </TableCell>
-                              <TableCell align="center">
-                                <Tooltip title="Delete user">
-                                  <IconButton
-                                    onClick={() => handleDelete(u.id, u.name)}
-                                    size="small"
-                                    sx={{
-                                      color: "#ef4444",
-                                      "&:hover": {
-                                        bgcolor: alpha("#ef4444", 0.1),
-                                      },
-                                    }}
-                                  >
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </TableCell>
-                            </motion.tr>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                </Box>
-              )}
+                                              fontWeight: 500,
+                                              "& .MuiChip-icon": { color: config.color },
+                                            }}
+                                          />
+                                        );
+                                      }}
+                                    >
+                                      <MenuItem value="user">
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                          <UserIcon sx={{ fontSize: 18, color: "#10b981" }} />
+                                          <span>User</span>
+                                        </Box>
+                                      </MenuItem>
+                                      <MenuItem value="owner">
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                          <OwnerIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
+                                          <span>Owner</span>
+                                        </Box>
+                                      </MenuItem>
+                                      <MenuItem value="admin">
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                          <AdminIcon sx={{ fontSize: 18, color: "#667eea" }} />
+                                          <span>Admin</span>
+                                        </Box>
+                                      </MenuItem>
+                                    </Select>
+                                  </FormControl>
+                                </TableCell>
+                                <TableCell align="center">
+                                  <Tooltip title="Delete user">
+                                    <IconButton
+                                      onClick={() => handleDelete(u.id, u.name)}
+                                      size="small"
+                                      sx={{
+                                        color: "#ef4444",
+                                        "&:hover": { bgcolor: alpha("#ef4444", 0.1) },
+                                      }}
+                                    >
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </TableCell>
+                              </motion.tr>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
+                  </Box>
 
-              {/* Footer */}
-              {users.length > 0 && (
-                <Box
-                  sx={{
-                    p: 2,
-                    borderTop: "1px solid #f0f0f0",
-                    bgcolor: "#fafbfc",
-                    display: "flex",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: "#999" }}>
-                    Total: <strong>{users.length}</strong> user(s) • Last updated: {new Date().toLocaleTimeString()}
-                  </Typography>
-                </Box>
+                  {/* Pagination Footer with Next/Previous buttons */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderTop: "1px solid #f0f0f0",
+                      bgcolor: "#fafbfc",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 2,
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: "#999" }}>
+                      Showing {indexOfFirstUser + 1}–{Math.min(indexOfLastUser, users.length)} of{" "}
+                      <strong>{users.length}</strong> user(s)
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        startIcon={<ChevronLeftIcon />}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          borderColor: alpha("#667eea", 0.5),
+                          color: "#667eea",
+                          "&:hover": {
+                            borderColor: "#667eea",
+                            backgroundColor: alpha("#667eea", 0.04),
+                          },
+                          "&.Mui-disabled": {
+                            borderColor: alpha("#ccc", 0.5),
+                            color: "#ccc",
+                          },
+                        }}
+                      >
+                        Previous
+                      </Button>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          px: 2,
+                          py: 0.5,
+                          bgcolor: alpha("#667eea", 0.1),
+                          borderRadius: 2,
+                          color: "#667eea",
+                          fontWeight: 500,
+                          display: "inline-flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        Page {currentPage} of {totalPages}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        endIcon={<ChevronRightIcon />}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          borderColor: alpha("#667eea", 0.5),
+                          color: "#667eea",
+                          "&:hover": {
+                            borderColor: "#667eea",
+                            backgroundColor: alpha("#667eea", 0.04),
+                          },
+                          "&.Mui-disabled": {
+                            borderColor: alpha("#ccc", 0.5),
+                            color: "#ccc",
+                          },
+                        }}
+                      >
+                        Next
+                      </Button>
+                    </Box>
+                  </Box>
+                </>
               )}
             </Card>
           </motion.div>
