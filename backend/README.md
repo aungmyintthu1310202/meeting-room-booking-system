@@ -84,7 +84,6 @@ http://localhost:5000
 4. API Endpoints (examples):
 
 - `POST /api/auth/login` — login and receive JWT
-- `POST /api/auth/register` — create user
 - `GET /api/bookings` — list bookings (protected)
 - `POST /api/bookings` — create booking (protected)
 - `GET /api/users` — list users (admin)
