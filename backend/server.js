@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-import bcrypt from "bcrypt";
 import app from "./app.js";
 import connectDB from "./src/config/db.js";
 import User from "./src/models/user.model.js";

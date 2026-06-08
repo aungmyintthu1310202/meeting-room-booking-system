@@ -36,12 +36,6 @@ JWT_SECRET=your_jwt_secret_here
 npm run dev
 ```
 
-Or start in production mode:
-
-```bash
-npm start
-```
-
 ## Folder Structure
 
 `meeting-room-booking-system-backend/`
