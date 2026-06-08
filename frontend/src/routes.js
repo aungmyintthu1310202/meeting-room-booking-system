@@ -4,8 +4,6 @@ import PublicRoute from './components/PublicRoute';
 import getClientName from './common/utils/getClientName';
 import NotFound from './pages/NotFound';
 import Dashboard from './pages/Dashboard';
-import UsersAdmin from './pages/admin/UsersAdmin';
-import BookingsList from './components/BookingsList';
 
 const clientName = getClientName();
 

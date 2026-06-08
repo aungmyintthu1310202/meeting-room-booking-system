@@ -5,10 +5,6 @@ import {
   Typography,
   Box,
   Paper,
-  TextField,
-  FormControlLabel,
-  Checkbox,
-  Divider,
   Alert,
   CircularProgress,
   FormControl,
@@ -18,18 +14,7 @@ import {
   Avatar,
   alpha,
 } from "@mui/material";
-import {
-  Email,
-  Lock,
-  Facebook,
-  LinkedIn,
-  Google,
-  ArrowForward,
-  Person,
-  Security,
-  Work,
-  MeetingRoom,
-} from "@mui/icons-material";
+import { ArrowForward } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import getClientName from "../../common/utils/getClientName";
 
@@ -38,15 +23,17 @@ function Login() {
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const clientName = getClientName();
+
+  // Base API URL
+  const API_BASE = "http://localhost:5000/api";
 
   // Fetch users
   useEffect(() => {
     async function fetchUsers() {
       try {
         setLoading(true);
-        const res = await fetch("http://localhost:5000/api/users");
+        const res = await fetch(`${API_BASE}/users`);
         if (!res.ok) {
           setError("Failed to load users");
           return;
@@ -69,7 +56,7 @@ function Login() {
       return;
     }
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: selected }),

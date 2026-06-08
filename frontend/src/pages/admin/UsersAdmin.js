@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Container,
@@ -10,7 +10,6 @@ import {
   InputLabel,
   Select,
   Alert,
-  Paper,
   Table,
   TableHead,
   TableRow,
@@ -50,10 +49,13 @@ export default function UsersAdmin({ refreshToken }) {
   const [usersPerPage] = useState(5);
   const token = localStorage.getItem("token");
 
-  async function fetchUsers() {
+  // Base API URL
+  const API_BASE = "http://localhost:5000/api";
+
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:5000/api/users", {
+      const res = await fetch(`${API_BASE}/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
@@ -64,11 +66,11 @@ export default function UsersAdmin({ refreshToken }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [API_BASE, token]);
 
   useEffect(() => {
     fetchUsers();
-  }, [refreshToken]);
+  }, [refreshToken, fetchUsers]);
 
   // Reset to first page when users list changes
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function UsersAdmin({ refreshToken }) {
       return;
     }
     try {
-      const res = await fetch("http://localhost:5000/api/users", {
+      const res = await fetch(`${API_BASE}/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +111,7 @@ export default function UsersAdmin({ refreshToken }) {
   async function handleDelete(id, userName) {
     if (!window.confirm(`Delete user "${userName}"?`)) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+      const res = await fetch(`${API_BASE}/users/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -127,8 +129,13 @@ export default function UsersAdmin({ refreshToken }) {
   }
 
   async function changeRole(id, newRole, userName) {
+    const confirmed = window.confirm(
+      `Are you sure you want to change ${userName}'s role to ${newRole}? This will log you out on success.`
+    );
+    if (!confirmed) return;
+
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+      const res = await fetch(`${API_BASE}/users/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -141,9 +148,8 @@ export default function UsersAdmin({ refreshToken }) {
         setError(e.message || "Update failed");
         return;
       }
-      setSuccess(`User "${userName}" role updated to ${newRole}`);
-      fetchUsers();
-      setTimeout(() => setSuccess(""), 3000);
+      localStorage.clear();
+      window.location.href = "/";
     } catch {
       setError("Server error");
     }

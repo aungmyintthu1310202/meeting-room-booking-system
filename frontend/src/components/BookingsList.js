@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -23,8 +23,7 @@ import {
   Avatar,
   Stack,
   LinearProgress,
-  useMediaQuery,
-  useTheme,
+  
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -52,11 +51,10 @@ export default function BookingsList({ refreshToken }) {
   const role = localStorage.getItem("userRole");
   const token = localStorage.getItem("token");
 
-  // Responsive helpers
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // Base API URL
+  const API_BASE = "http://localhost:5000/api";
 
-  async function fetchSummary() {
+  const fetchSummary = useCallback(async () => {
     if (!role || !["admin", "owner"].includes(role)) {
       setSummary({ totals: [], bookingsByUser: [] });
       return;
@@ -64,25 +62,26 @@ export default function BookingsList({ refreshToken }) {
 
     setSummaryLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/bookings/summary", {
+      const res = await fetch(`${API_BASE}/bookings/summary`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        return;
-      }
+      if (!res.ok) return;
       const data = await res.json();
-      setSummary({ totals: data.totals || [], bookingsByUser: data.bookingsByUser || [] });
+      setSummary({
+        totals: data.totals || [],
+        bookingsByUser: data.bookingsByUser || [],
+      });
     } catch {
       // keep summary state if fetch fails
     } finally {
       setSummaryLoading(false);
     }
-  }
+  }, [API_BASE, token, role]);
 
-  async function fetchBookings() {
+  const fetchBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/bookings", {
+      const res = await fetch(`${API_BASE}/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -98,11 +97,11 @@ export default function BookingsList({ refreshToken }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [API_BASE, token, fetchSummary]);
 
   useEffect(() => {
     fetchBookings();
-  }, [refreshToken]);
+  }, [refreshToken, fetchBookings]);
 
   // Reset to first page when bookings list changes
   useEffect(() => {
@@ -112,10 +111,13 @@ export default function BookingsList({ refreshToken }) {
   async function handleDelete(id) {
     if (!window.confirm("Delete booking?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${API_BASE}/bookings/${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (!res.ok) {
         const err = await res.json();
         setError(err.message || "Failed to delete");
@@ -135,8 +137,15 @@ export default function BookingsList({ refreshToken }) {
   const formatDateTime = (dateStr) => {
     const date = new Date(dateStr);
     return {
-      date: date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      date: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      time: date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
   };
 
@@ -152,7 +161,10 @@ export default function BookingsList({ refreshToken }) {
   // Pagination logic
   const indexOfLastBooking = currentPage * rowsPerPage;
   const indexOfFirstBooking = indexOfLastBooking - rowsPerPage;
-  const currentBookings = bookings.slice(indexOfFirstBooking, indexOfLastBooking);
+  const currentBookings = bookings.slice(
+    indexOfFirstBooking,
+    indexOfLastBooking,
+  );
   const totalPages = Math.ceil(bookings.length / rowsPerPage);
 
   const groupedBookings = summary.bookingsByUser.reduce((acc, booking) => {
@@ -172,7 +184,10 @@ export default function BookingsList({ refreshToken }) {
 
   if (loading) {
     return (
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid rgba(0,0,0,0.05)" }}>
+      <Paper
+        elevation={0}
+        sx={{ p: 3, borderRadius: 4, border: "1px solid rgba(0,0,0,0.05)" }}
+      >
         <Stack spacing={2}>
           <Skeleton variant="rounded" height={50} width="100%" />
           <Skeleton variant="rounded" height={400} />
@@ -206,7 +221,9 @@ export default function BookingsList({ refreshToken }) {
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Avatar sx={{ bgcolor: alpha("#667eea", 0.1), width: 40, height: 40 }}>
+            <Avatar
+              sx={{ bgcolor: alpha("#667eea", 0.1), width: 40, height: 40 }}
+            >
               <RoomIcon sx={{ color: "#667eea" }} />
             </Avatar>
             <Typography variant="h6" sx={{ fontWeight: 700, color: "#1a1a2e" }}>
@@ -224,17 +241,41 @@ export default function BookingsList({ refreshToken }) {
             />
           </Box>
           <Tooltip title="Refresh">
-            <IconButton onClick={fetchBookings} sx={{ color: "#667eea", "&:hover": { bgcolor: alpha("#667eea", 0.05) } }}>
+            <IconButton
+              onClick={fetchBookings}
+              sx={{
+                color: "#667eea",
+                "&:hover": { bgcolor: alpha("#667eea", 0.05) },
+              }}
+            >
               <RefreshIcon />
             </IconButton>
           </Tooltip>
         </Box>
 
         {/* Dashboard Summary - Only two metric cards */}
-        {(["admin", "owner"].includes(role)) && (
-          <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: "1px solid #f0f2f5", bgcolor: "#fafcff" }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#1a1a2e", letterSpacing: "-0.3px" }}>
+        {["admin", "owner"].includes(role) && (
+          <Box
+            sx={{
+              p: { xs: 2, sm: 3 },
+              borderBottom: "1px solid #f0f2f5",
+              bgcolor: "#fafcff",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 3 }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 700,
+                  color: "#1a1a2e",
+                  letterSpacing: "-0.3px",
+                }}
+              >
                 📊 Booking Insights
               </Typography>
               <Button
@@ -242,14 +283,25 @@ export default function BookingsList({ refreshToken }) {
                 variant="text"
                 startIcon={<RefreshIcon sx={{ fontSize: 18 }} />}
                 onClick={fetchBookings}
-                sx={{ textTransform: "none", color: "#667eea", fontWeight: 500, "&:hover": { bgcolor: alpha("#667eea", 0.05) } }}
+                sx={{
+                  textTransform: "none",
+                  color: "#667eea",
+                  fontWeight: 500,
+                  "&:hover": { bgcolor: alpha("#667eea", 0.05) },
+                }}
               >
                 Refresh
               </Button>
             </Stack>
 
             {summaryLoading ? (
-              <LinearProgress sx={{ borderRadius: 2, bgcolor: alpha("#667eea", 0.1), "& .MuiLinearProgress-bar": { bgcolor: "#667eea" } }} />
+              <LinearProgress
+                sx={{
+                  borderRadius: 2,
+                  bgcolor: alpha("#667eea", 0.1),
+                  "& .MuiLinearProgress-bar": { bgcolor: "#667eea" },
+                }}
+              />
             ) : (
               <Grid container spacing={3}>
                 {/* Two metric cards: Total Active Users and Total Bookings */}
@@ -258,23 +310,47 @@ export default function BookingsList({ refreshToken }) {
                     elevation={0}
                     sx={{
                       borderRadius: 4,
-                      background: "linear-gradient(145deg, #f8f4ff 0%, #f0eaff 100%)",
+                      background:
+                        "linear-gradient(145deg, #f8f4ff 0%, #f0eaff 100%)",
                       border: "1px solid rgba(102,126,234,0.15)",
                       transition: "transform 0.2s, box-shadow 0.2s",
-                      "&:hover": { transform: "translateY(-4px)", boxShadow: "0 12px 24px rgba(102,126,234,0.15)" },
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                        boxShadow: "0 12px 24px rgba(102,126,234,0.15)",
+                      },
                     }}
                   >
                     <CardContent>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                      >
                         <Box>
-                          <Typography variant="caption" sx={{ color: "#667eea", fontWeight: 600, letterSpacing: "0.5px" }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#667eea",
+                              fontWeight: 600,
+                              letterSpacing: "0.5px",
+                            }}
+                          >
                             TOTAL ACTIVE USERS
                           </Typography>
-                          <Typography variant="h3" sx={{ fontWeight: 800, color: "#1a1a2e", mt: 0.5 }}>
+                          <Typography
+                            variant="h3"
+                            sx={{ fontWeight: 800, color: "#1a1a2e", mt: 0.5 }}
+                          >
                             {summary.totals.length}
                           </Typography>
                         </Box>
-                        <Avatar sx={{ bgcolor: alpha("#667eea", 0.2), width: 48, height: 48 }}>
+                        <Avatar
+                          sx={{
+                            bgcolor: alpha("#667eea", 0.2),
+                            width: 48,
+                            height: 48,
+                          }}
+                        >
                           <PeopleIcon sx={{ color: "#667eea" }} />
                         </Avatar>
                       </Stack>
@@ -287,23 +363,47 @@ export default function BookingsList({ refreshToken }) {
                     elevation={0}
                     sx={{
                       borderRadius: 4,
-                      background: "linear-gradient(145deg, #eef9ff 0%, #e0f2fe 100%)",
+                      background:
+                        "linear-gradient(145deg, #eef9ff 0%, #e0f2fe 100%)",
                       border: "1px solid rgba(56,189,248,0.2)",
                       transition: "transform 0.2s",
-                      "&:hover": { transform: "translateY(-4px)", boxShadow: "0 12px 24px rgba(56,189,248,0.15)" },
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                        boxShadow: "0 12px 24px rgba(56,189,248,0.15)",
+                      },
                     }}
                   >
                     <CardContent>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                      >
                         <Box>
-                          <Typography variant="caption" sx={{ color: "#0ea5e9", fontWeight: 600, letterSpacing: "0.5px" }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#0ea5e9",
+                              fontWeight: 600,
+                              letterSpacing: "0.5px",
+                            }}
+                          >
                             TOTAL BOOKINGS
                           </Typography>
-                          <Typography variant="h3" sx={{ fontWeight: 800, color: "#1a1a2e", mt: 0.5 }}>
+                          <Typography
+                            variant="h3"
+                            sx={{ fontWeight: 800, color: "#1a1a2e", mt: 0.5 }}
+                          >
                             {bookings.length}
                           </Typography>
                         </Box>
-                        <Avatar sx={{ bgcolor: alpha("#0ea5e9", 0.2), width: 48, height: 48 }}>
+                        <Avatar
+                          sx={{
+                            bgcolor: alpha("#0ea5e9", 0.2),
+                            width: 48,
+                            height: 48,
+                          }}
+                        >
                           <EventNoteIcon sx={{ color: "#0ea5e9" }} />
                         </Avatar>
                       </Stack>
@@ -313,14 +413,27 @@ export default function BookingsList({ refreshToken }) {
 
                 {/* Two-column layout – stack on mobile */}
                 <Grid item xs={12} md={6}>
-                  <Card elevation={0} sx={{ borderRadius: 4, border: "1px solid #f0f2f5", height: "100%" }}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      borderRadius: 4,
+                      border: "1px solid #f0f2f5",
+                      height: "100%",
+                    }}
+                  >
                     <Box sx={{ p: 2.5, borderBottom: "1px solid #f0f2f5" }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1a1a2e" }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: 700, color: "#1a1a2e" }}
+                      >
                         👥 Bookings by User
                       </Typography>
                     </Box>
                     {summary.totals.length === 0 ? (
-                      <Typography variant="body2" sx={{ color: "#999", textAlign: "center", py: 4 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#999", textAlign: "center", py: 4 }}
+                      >
                         No user booking data available.
                       </Typography>
                     ) : (
@@ -328,22 +441,55 @@ export default function BookingsList({ refreshToken }) {
                         <Table size="small">
                           <TableHead>
                             <TableRow sx={{ bgcolor: "#fafafa" }}>
-                              <TableCell sx={{ fontWeight: 600, color: "#555" }}>User</TableCell>
-                              <TableCell sx={{ fontWeight: 600, color: "#555" }}>Role</TableCell>
-                              <TableCell align="right" sx={{ fontWeight: 600, color: "#555" }}>Total</TableCell>
+                              <TableCell
+                                sx={{ fontWeight: 600, color: "#555" }}
+                              >
+                                User
+                              </TableCell>
+                              <TableCell
+                                sx={{ fontWeight: 600, color: "#555" }}
+                              >
+                                Role
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ fontWeight: 600, color: "#555" }}
+                              >
+                                Total
+                              </TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {summary.totals.map((user) => (
-                              <TableRow key={user.userId} hover sx={{ "&:last-child td": { borderBottom: 0 } }}>
-                                <TableCell sx={{ fontWeight: 500, color: "#1a1a2e" }}>{user.name || "Unknown"}</TableCell>
+                              <TableRow
+                                key={user.userId}
+                                hover
+                                sx={{ "&:last-child td": { borderBottom: 0 } }}
+                              >
+                                <TableCell
+                                  sx={{ fontWeight: 500, color: "#1a1a2e" }}
+                                >
+                                  {user.name || "Unknown"}
+                                </TableCell>
                                 <TableCell>
                                   <Chip
                                     label={user.role}
                                     size="small"
                                     sx={{
-                                      bgcolor: alpha(user.role === "admin" ? "#667eea" : user.role === "owner" ? "#f59e0b" : "#10b981", 0.1),
-                                      color: user.role === "admin" ? "#667eea" : user.role === "owner" ? "#f59e0b" : "#10b981",
+                                      bgcolor: alpha(
+                                        user.role === "admin"
+                                          ? "#667eea"
+                                          : user.role === "owner"
+                                            ? "#f59e0b"
+                                            : "#10b981",
+                                        0.1,
+                                      ),
+                                      color:
+                                        user.role === "admin"
+                                          ? "#667eea"
+                                          : user.role === "owner"
+                                            ? "#f59e0b"
+                                            : "#10b981",
                                       fontWeight: 500,
                                       textTransform: "capitalize",
                                       borderRadius: 1.5,
@@ -351,7 +497,15 @@ export default function BookingsList({ refreshToken }) {
                                   />
                                 </TableCell>
                                 <TableCell align="right">
-                                  <Chip label={user.totalBookings} size="small" sx={{ bgcolor: alpha("#667eea", 0.1), color: "#667eea", fontWeight: 600 }} />
+                                  <Chip
+                                    label={user.totalBookings}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: alpha("#667eea", 0.1),
+                                      color: "#667eea",
+                                      fontWeight: 600,
+                                    }}
+                                  />
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -363,85 +517,174 @@ export default function BookingsList({ refreshToken }) {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Card elevation={0} sx={{ borderRadius: 4, border: "1px solid #f0f2f5", height: "100%", overflow: "hidden" }}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      borderRadius: 4,
+                      border: "1px solid #f0f2f5",
+                      height: "100%",
+                      overflow: "hidden",
+                    }}
+                  >
                     <Box sx={{ p: 2.5, borderBottom: "1px solid #f0f2f5" }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1a1a2e" }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: 700, color: "#1a1a2e" }}
+                      >
                         🗂️ Detailed Bookings by User
                       </Typography>
                     </Box>
                     <Box sx={{ p: 2, maxHeight: 400, overflowY: "auto" }}>
                       {Object.keys(groupedBookings).length === 0 ? (
-                        <Typography variant="body2" sx={{ color: "#999", textAlign: "center", py: 4 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#999", textAlign: "center", py: 4 }}
+                        >
                           No detailed booking data.
                         </Typography>
                       ) : (
                         <Stack spacing={2}>
-                          {Object.entries(groupedBookings).map(([userName, bookingsForUser]) => (
-                            <Card key={userName} elevation={0} sx={{ borderRadius: 3, border: "1px solid #f0f2f5", overflow: "hidden" }}>
-                              <Box
+                          {Object.entries(groupedBookings).map(
+                            ([userName, bookingsForUser]) => (
+                              <Card
+                                key={userName}
+                                elevation={0}
                                 sx={{
-                                  p: 2,
-                                  bgcolor: "#fafcff",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  flexWrap: "wrap",
-                                  gap: 1,
-                                  cursor: "pointer",
-                                  transition: "0.2s",
-                                  "&:hover": { bgcolor: "#f5f7ff" },
-                                }}
-                                onClick={() => {
-                                  const el = document.getElementById(`group-${userName.replace(/\s/g, "")}`);
-                                  if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+                                  borderRadius: 3,
+                                  border: "1px solid #f0f2f5",
+                                  overflow: "hidden",
                                 }}
                               >
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                                  <Avatar sx={{ width: 32, height: 32, bgcolor: alpha("#667eea", 0.1), color: "#667eea" }}>
-                                    <PersonIcon fontSize="small" />
-                                  </Avatar>
-                                  <Typography sx={{ fontWeight: 600, color: "#1a1a2e" }}>{userName}</Typography>
-                                  <Chip
-                                    label={`${bookingsForUser.length} booking${bookingsForUser.length !== 1 ? "s" : ""}`}
-                                    size="small"
-                                    sx={{ bgcolor: "#667eea", color: "#fff", fontWeight: 500, borderRadius: 1.5 }}
-                                  />
-                                </Box>
-                                <Typography variant="caption" sx={{ color: "#667eea", fontWeight: 500 }}>Click to expand</Typography>
-                              </Box>
-                              <Box id={`group-${userName.replace(/\s/g, "")}`} sx={{ display: "none", p: 2, bgcolor: "#fff", borderTop: "1px solid #f0f2f5" }}>
-                                <Stack spacing={1}>
-                                  {bookingsForUser.map((item, idx) => {
-                                    const { date, time } = formatDateTime(item.startTime);
-                                    const duration = getDuration(item.startTime, item.endTime);
-                                    return (
-                                      <Box
-                                        key={`${item.userId}-${item.startTime}-${idx}`}
-                                        sx={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "space-between",
-                                          flexWrap: "wrap",
-                                          gap: 1,
-                                          p: 1.5,
-                                          borderRadius: 2,
-                                          bgcolor: "#fafafa",
-                                        }}
-                                      >
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                          <CalendarIcon sx={{ fontSize: 14, color: "#667eea" }} />
-                                          <Typography variant="body2">
-                                            {date} at {time}
-                                          </Typography>
-                                        </Box>
-                                        <Chip label={duration} size="small" sx={{ bgcolor: alpha("#10b981", 0.1), color: "#10b981", fontSize: "0.7rem" }} />
-                                      </Box>
+                                <Box
+                                  sx={{
+                                    p: 2,
+                                    bgcolor: "#fafcff",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    flexWrap: "wrap",
+                                    gap: 1,
+                                    cursor: "pointer",
+                                    transition: "0.2s",
+                                    "&:hover": { bgcolor: "#f5f7ff" },
+                                  }}
+                                  onClick={() => {
+                                    const el = document.getElementById(
+                                      `group-${userName.replace(/\s/g, "")}`,
                                     );
-                                  })}
-                                </Stack>
-                              </Box>
-                            </Card>
-                          ))}
+                                    if (el)
+                                      el.style.display =
+                                        el.style.display === "none"
+                                          ? "block"
+                                          : "none";
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 1.5,
+                                    }}
+                                  >
+                                    <Avatar
+                                      sx={{
+                                        width: 32,
+                                        height: 32,
+                                        bgcolor: alpha("#667eea", 0.1),
+                                        color: "#667eea",
+                                      }}
+                                    >
+                                      <PersonIcon fontSize="small" />
+                                    </Avatar>
+                                    <Typography
+                                      sx={{ fontWeight: 600, color: "#1a1a2e" }}
+                                    >
+                                      {userName}
+                                    </Typography>
+                                    <Chip
+                                      label={`${bookingsForUser.length} booking${bookingsForUser.length !== 1 ? "s" : ""}`}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: "#667eea",
+                                        color: "#fff",
+                                        fontWeight: 500,
+                                        borderRadius: 1.5,
+                                      }}
+                                    />
+                                  </Box>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: "#667eea", fontWeight: 500 }}
+                                  >
+                                    Click to expand
+                                  </Typography>
+                                </Box>
+                                <Box
+                                  id={`group-${userName.replace(/\s/g, "")}`}
+                                  sx={{
+                                    display: "none",
+                                    p: 2,
+                                    bgcolor: "#fff",
+                                    borderTop: "1px solid #f0f2f5",
+                                  }}
+                                >
+                                  <Stack spacing={1}>
+                                    {bookingsForUser.map((item, idx) => {
+                                      const { date, time } = formatDateTime(
+                                        item.startTime,
+                                      );
+                                      const duration = getDuration(
+                                        item.startTime,
+                                        item.endTime,
+                                      );
+                                      return (
+                                        <Box
+                                          key={`${item.userId}-${item.startTime}-${idx}`}
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            flexWrap: "wrap",
+                                            gap: 1,
+                                            p: 1.5,
+                                            borderRadius: 2,
+                                            bgcolor: "#fafafa",
+                                          }}
+                                        >
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 1,
+                                            }}
+                                          >
+                                            <CalendarIcon
+                                              sx={{
+                                                fontSize: 14,
+                                                color: "#667eea",
+                                              }}
+                                            />
+                                            <Typography variant="body2">
+                                              {date} at {time}
+                                            </Typography>
+                                          </Box>
+                                          <Chip
+                                            label={duration}
+                                            size="small"
+                                            sx={{
+                                              bgcolor: alpha("#10b981", 0.1),
+                                              color: "#10b981",
+                                              fontSize: "0.7rem",
+                                            }}
+                                          />
+                                        </Box>
+                                      );
+                                    })}
+                                  </Stack>
+                                </Box>
+                              </Card>
+                            ),
+                          )}
                         </Stack>
                       )}
                     </Box>
@@ -453,7 +696,11 @@ export default function BookingsList({ refreshToken }) {
         )}
 
         {error && (
-          <Alert severity="error" sx={{ m: 2, borderRadius: 2 }} onClose={() => setError("")}>
+          <Alert
+            severity="error"
+            sx={{ m: 2, borderRadius: 2 }}
+            onClose={() => setError("")}
+          >
             {error}
           </Alert>
         )}
@@ -461,8 +708,12 @@ export default function BookingsList({ refreshToken }) {
         {bookings.length === 0 && !error ? (
           <Box sx={{ py: 10, textAlign: "center" }}>
             <RoomIcon sx={{ fontSize: 64, color: "#d1d5db", mb: 2 }} />
-            <Typography variant="h6" sx={{ color: "#6b7280", fontWeight: 500 }}>No bookings found</Typography>
-            <Typography variant="body2" sx={{ color: "#9ca3af" }}>Create a new booking using the form above</Typography>
+            <Typography variant="h6" sx={{ color: "#6b7280", fontWeight: 500 }}>
+              No bookings found
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#9ca3af" }}>
+              Create a new booking using the form above
+            </Typography>
           </Box>
         ) : (
           <>
@@ -471,13 +722,36 @@ export default function BookingsList({ refreshToken }) {
               <Table stickyHeader sx={{ minWidth: 650 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: "#f8f9fc" }}>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280", width: 60 }}>#</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>Start Date / Time</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>End Date / Time</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>Duration</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>Created By</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>Created At</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#6b7280", width: 80, textAlign: "center" }}>Action</TableCell>
+                    <TableCell
+                      sx={{ fontWeight: 600, color: "#6b7280", width: 60 }}
+                    >
+                      #
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>
+                      Start Date / Time
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>
+                      End Date / Time
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>
+                      Duration
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>
+                      Created By
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "#6b7280" }}>
+                      Created At
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: 600,
+                        color: "#6b7280",
+                        width: 80,
+                        textAlign: "center",
+                      }}
+                    >
+                      Action
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -495,57 +769,163 @@ export default function BookingsList({ refreshToken }) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, x: -20 }}
                           transition={{ duration: 0.2, delay: idx * 0.03 }}
-                          style={{ backgroundColor: past ? alpha("#f3f4f6", 0.4) : "transparent" }}
+                          style={{
+                            backgroundColor: past
+                              ? alpha("#f3f4f6", 0.4)
+                              : "transparent",
+                          }}
                         >
-                          <TableCell sx={{ color: "#9ca3af", fontWeight: 500 }}>{String(globalIndex).padStart(2, "0")}</TableCell>
+                          <TableCell sx={{ color: "#9ca3af", fontWeight: 500 }}>
+                            {String(globalIndex).padStart(2, "0")}
+                          </TableCell>
                           <TableCell>
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <CalendarIcon sx={{ fontSize: 14, color: "#667eea" }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{start.date}</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 0.5,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <CalendarIcon
+                                  sx={{ fontSize: 14, color: "#667eea" }}
+                                />
+                                <Typography
+                                  variant="body2"
+                                  sx={{ fontWeight: 500 }}
+                                >
+                                  {start.date}
+                                </Typography>
                               </Box>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                <TimeIcon sx={{ fontSize: 12, color: "#9ca3af" }} />
-                                <Typography variant="caption" sx={{ color: "#6b7280" }}>{start.time}</Typography>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.5,
+                                }}
+                              >
+                                <TimeIcon
+                                  sx={{ fontSize: 12, color: "#9ca3af" }}
+                                />
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "#6b7280" }}
+                                >
+                                  {start.time}
+                                </Typography>
                               </Box>
                             </Box>
                           </TableCell>
                           <TableCell>
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <CalendarIcon sx={{ fontSize: 14, color: "#764ba2" }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{end.date}</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 0.5,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <CalendarIcon
+                                  sx={{ fontSize: 14, color: "#764ba2" }}
+                                />
+                                <Typography
+                                  variant="body2"
+                                  sx={{ fontWeight: 500 }}
+                                >
+                                  {end.date}
+                                </Typography>
                               </Box>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                <TimeIcon sx={{ fontSize: 12, color: "#9ca3af" }} />
-                                <Typography variant="caption" sx={{ color: "#6b7280" }}>{end.time}</Typography>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.5,
+                                }}
+                              >
+                                <TimeIcon
+                                  sx={{ fontSize: 12, color: "#9ca3af" }}
+                                />
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "#6b7280" }}
+                                >
+                                  {end.time}
+                                </Typography>
                               </Box>
                             </Box>
                           </TableCell>
                           <TableCell>
-                            <Chip label={duration} size="small" sx={{ bgcolor: alpha("#10b981", 0.1), color: "#10b981", fontWeight: 500, fontSize: "0.7rem" }} />
+                            <Chip
+                              label={duration}
+                              size="small"
+                              sx={{
+                                bgcolor: alpha("#10b981", 0.1),
+                                color: "#10b981",
+                                fontWeight: 500,
+                                fontSize: "0.7rem",
+                              }}
+                            />
                           </TableCell>
                           <TableCell>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <PersonIcon sx={{ fontSize: 16, color: "#9ca3af" }} />
-                              <Typography variant="body2">{b.userName || b.userId}</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <PersonIcon
+                                sx={{ fontSize: 16, color: "#9ca3af" }}
+                              />
+                              <Typography variant="body2">
+                                {b.userName || b.userId}
+                              </Typography>
                             </Box>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" sx={{ color: "#6b7280", fontSize: "0.75rem" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#6b7280", fontSize: "0.75rem" }}
+                            >
                               {new Date(b.createdAt).toLocaleString()}
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
                             {canDelete(b) ? (
                               <Tooltip title="Delete booking">
-                                <IconButton onClick={() => handleDelete(b.id)} size="small" sx={{ color: "#ef4444", "&:hover": { bgcolor: alpha("#ef4444", 0.1) } }}>
+                                <IconButton
+                                  onClick={() => handleDelete(b.id)}
+                                  size="small"
+                                  sx={{
+                                    color: "#ef4444",
+                                    "&:hover": {
+                                      bgcolor: alpha("#ef4444", 0.1),
+                                    },
+                                  }}
+                                >
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             ) : (
                               <Tooltip title="No permission">
-                                <IconButton disabled size="small"><DeleteIcon fontSize="small" sx={{ color: "#d1d5db" }} /></IconButton>
+                                <IconButton disabled size="small">
+                                  <DeleteIcon
+                                    fontSize="small"
+                                    sx={{ color: "#d1d5db" }}
+                                  />
+                                </IconButton>
                               </Tooltip>
                             )}
                           </TableCell>
@@ -558,20 +938,73 @@ export default function BookingsList({ refreshToken }) {
             </TableContainer>
 
             {/* Pagination Footer */}
-            <Box sx={{ p: 2, borderTop: "1px solid #f0f2f5", bgcolor: "#fafcff", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
+            <Box
+              sx={{
+                p: 2,
+                borderTop: "1px solid #f0f2f5",
+                bgcolor: "#fafcff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
               <Typography variant="caption" sx={{ color: "#9ca3af" }}>
-                Showing {indexOfFirstBooking + 1}–{Math.min(indexOfLastBooking, bookings.length)} of <strong>{bookings.length}</strong> booking(s)
+                Showing {indexOfFirstBooking + 1}–
+                {Math.min(indexOfLastBooking, bookings.length)} of{" "}
+                <strong>{bookings.length}</strong> booking(s)
               </Typography>
               <Box sx={{ display: "flex", gap: 1 }}>
-                <Button variant="outlined" size="small" onClick={goToPreviousPage} disabled={currentPage === 1} startIcon={<ChevronLeftIcon />}
-                  sx={{ borderRadius: 2, textTransform: "none", borderColor: alpha("#667eea", 0.3), color: "#667eea", "&:hover": { borderColor: "#667eea", bgcolor: alpha("#667eea", 0.04) } }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  startIcon={<ChevronLeftIcon />}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    borderColor: alpha("#667eea", 0.3),
+                    color: "#667eea",
+                    "&:hover": {
+                      borderColor: "#667eea",
+                      bgcolor: alpha("#667eea", 0.04),
+                    },
+                  }}
+                >
                   Previous
                 </Button>
-                <Typography variant="body2" sx={{ px: 2, py: 0.5, bgcolor: alpha("#667eea", 0.08), borderRadius: 2, color: "#667eea", fontWeight: 500 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    px: 2,
+                    py: 0.5,
+                    bgcolor: alpha("#667eea", 0.08),
+                    borderRadius: 2,
+                    color: "#667eea",
+                    fontWeight: 500,
+                  }}
+                >
                   Page {currentPage} of {totalPages}
                 </Typography>
-                <Button variant="outlined" size="small" onClick={goToNextPage} disabled={currentPage === totalPages} endIcon={<ChevronRightIcon />}
-                  sx={{ borderRadius: 2, textTransform: "none", borderColor: alpha("#667eea", 0.3), color: "#667eea", "&:hover": { borderColor: "#667eea", bgcolor: alpha("#667eea", 0.04) } }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  endIcon={<ChevronRightIcon />}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    borderColor: alpha("#667eea", 0.3),
+                    color: "#667eea",
+                    "&:hover": {
+                      borderColor: "#667eea",
+                      bgcolor: alpha("#667eea", 0.04),
+                    },
+                  }}
+                >
                   Next
                 </Button>
               </Box>

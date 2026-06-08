@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   ErrorOutline as ErrorOutlineIcon,
   Home as HomeIcon,
-  SentimentDissatisfied as SadIcon,
 } from "@mui/icons-material";
 import getClientName from "../common/utils/getClientName";
 

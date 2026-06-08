@@ -4,9 +4,7 @@ import {
   Button,
   Typography,
   Alert,
-  Paper,
   Grid,
-  Divider,
   Fade,
   Zoom,
   alpha,
@@ -40,6 +38,9 @@ const CustomConnector = styled(StepConnector)(({ theme }) => ({
   },
 }));
 
+// Base API URL
+const API_BASE = "http://localhost:5000/api";
+
 const CustomStepIcon = ({ active, completed, icon }) => {
   const icons = {
     1: <TodayIcon />,
@@ -57,8 +58,8 @@ const CustomStepIcon = ({ active, completed, icon }) => {
         background: active
           ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
           : completed
-          ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-          : "#f0f0f0",
+            ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+            : "#f0f0f0",
         color: active || completed ? "#fff" : "#999",
         transition: "all 0.3s ease",
       }}
@@ -105,14 +106,17 @@ export default function BookingForm({ onCreated }) {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${API_BASE}/bookings`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ startTime: startISO, endTime: endISO }),
         },
-        body: JSON.stringify({ startTime: startISO, endTime: endISO }),
-      });
+      );
 
       if (!res.ok) {
         const err = await res.json();
@@ -158,7 +162,9 @@ export default function BookingForm({ onCreated }) {
               color: "#fff",
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}
+            >
               <EventIcon sx={{ fontSize: 28 }} />
               <Typography variant="h5" sx={{ fontWeight: 600 }}>
                 Create Booking
@@ -177,14 +183,22 @@ export default function BookingForm({ onCreated }) {
               sx={{ mb: 4, mt: 1 }}
             >
               <Step>
-                <StepLabel StepIconComponent={(props) => <CustomStepIcon {...props} icon={1} />}>
+                <StepLabel
+                  StepIconComponent={(props) => (
+                    <CustomStepIcon {...props} icon={1} />
+                  )}
+                >
                   <Typography variant="caption" sx={{ color: "#666" }}>
                     Start Time
                   </Typography>
                 </StepLabel>
               </Step>
               <Step>
-                <StepLabel StepIconComponent={(props) => <CustomStepIcon {...props} icon={2} />}>
+                <StepLabel
+                  StepIconComponent={(props) => (
+                    <CustomStepIcon {...props} icon={2} />
+                  )}
+                >
                   <Typography variant="caption" sx={{ color: "#666" }}>
                     End Time
                   </Typography>
@@ -250,7 +264,8 @@ export default function BookingForm({ onCreated }) {
                           width: 32,
                           height: 32,
                           borderRadius: "50%",
-                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -258,7 +273,10 @@ export default function BookingForm({ onCreated }) {
                       >
                         <TimeIcon sx={{ fontSize: 16, color: "#fff" }} />
                       </Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#1a1a2e" }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, color: "#1a1a2e" }}
+                      >
                         Start Date & Time
                       </Typography>
                     </Box>
@@ -341,7 +359,8 @@ export default function BookingForm({ onCreated }) {
                           width: 32,
                           height: 32,
                           borderRadius: "50%",
-                          background: "linear-gradient(135deg, #764ba2 0%, #667eea 100%)",
+                          background:
+                            "linear-gradient(135deg, #764ba2 0%, #667eea 100%)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -349,7 +368,10 @@ export default function BookingForm({ onCreated }) {
                       >
                         <ScheduleIcon sx={{ fontSize: 16, color: "#fff" }} />
                       </Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#1a1a2e" }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, color: "#1a1a2e" }}
+                      >
                         End Date & Time
                       </Typography>
                     </Box>
@@ -415,7 +437,8 @@ export default function BookingForm({ onCreated }) {
                     variant="contained"
                     disabled={!isStepComplete()}
                     sx={{
-                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                       borderRadius: 3,
                       px: 5,
                       py: 1.2,

@@ -18,7 +18,6 @@ import {
   Badge,
   useTheme,
   alpha,
-  Divider,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -28,7 +27,6 @@ import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
   NotificationsNone as NotificationsIcon,
-  Brightness4 as DarkModeIcon,
 } from "@mui/icons-material";
 import getClientName from "../common/utils/getClientName";
 import BookingForm from "../components/BookingForm";
