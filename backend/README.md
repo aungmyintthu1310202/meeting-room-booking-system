@@ -84,14 +84,6 @@ http://localhost:5000
 
 Check the `routes/` and `src/controllers/` folders for complete endpoint details.
 
-## Testing
-
-- If tests exist, run:
-
-```bash
-npm test
-```
-
 ## Notes
 
 - Use `nodemon` for automatic restarts during development (`npm run dev`).
